@@ -1,925 +1,446 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Doblo Rush</title>
-    <style>
-        :root {
-            --road-surface: #3a3a3a;
-            --road-border: #111216;
-            --lane-mark: rgba(255, 255, 255, 0.72);
-            --doblo-white: #f7f7f7;
-            --doblo-gray: #cdd2d7;
-            --doblo-darker: #9ba2aa;
-            --doblo-red: #d72638;
-            --doblo-blue: #2280c3;
-            --hud-bg: rgba(15, 15, 20, 0.65);
-            --hud-text: #f1f1f1;
-            --pedal-accel: linear-gradient(130deg, #63ffa7 0%, #1a9847 100%);
-            --pedal-brake: linear-gradient(130deg, #ff7760 0%, #c32020 100%);
-            font-family: "Segoe UI", Tahoma, sans-serif;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doblo Crash – version facile</title>
+  <style>
+    :root {
+      /* Reprise de vos variables & style */
+      --bg-start: #0c1a24;
+      --bg-end: #1f3a52;
+      --card-bg: rgba(13, 24, 33, 0.72);
+      --button-doblo: linear-gradient(135deg, #ff4858 0%, #d72638 100%);
+      --button-gazier: linear-gradient(135deg, #3ac7ff 0%, #0070c9 100%);
+      --button-text: #fdfdfd;
+      --text-main: #f7f9fb;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+    }
 
-        * {
-            box-sizing: border-box;
-            touch-action: manipulation;
-        }
+    * { box-sizing: border-box; }
 
-        body {
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: radial-gradient(circle at top, #21242a 0%, #11151c 58%, #07090d 100%);
-            color: #202225;
-        }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at top, var(--bg-start), var(--bg-end));
+      color: var(--text-main);
+    }
 
-        #game-wrapper {
-            width: min(94vw, 440px);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 14px;
-        }
+    .card {
+      width: min(94vw, 540px);
+      padding: clamp(18px, 4.5vw, 28px);
+      border-radius: 28px;
+      background: var(--card-bg);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 28px 48px rgba(0, 0, 0, 0.42);
+      display: grid;
+      gap: clamp(14px, 3.5vw, 20px);
+    }
 
-        #hud {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 18px;
-            border-radius: 16px;
-            background: var(--hud-bg);
-            color: var(--hud-text);
-            font-size: 15px;
-            letter-spacing: 0.5px;
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
-        }
+    header {
+      display: grid; gap: 4px; text-align: center;
+    }
+    header h1 { margin: 0; font-size: clamp(22px, 5vw, 30px); letter-spacing: 0.5px; }
+    header p { margin: 0; opacity: .78; font-size: clamp(14px, 3.6vw, 16px); }
 
-        #hud span {
-            font-weight: 600;
-        }
+    .hud {
+      display: flex; align-items: center; justify-content: space-between;
+      font-weight: 700; letter-spacing: .5px; font-size: clamp(14px, 3.8vw, 16px);
+    }
 
-        #road {
-            position: relative;
-            width: 100%;
-            height: min(70vh, 620px);
-            min-height: 460px;
-            background: linear-gradient(180deg, #444 0%, #2e2e2e 40%, #242424 100%);
-            border-radius: 20px;
-            border: 8px solid var(--road-border);
-            overflow: hidden;
-            box-shadow: 0 28px 60px rgba(0, 0, 0, 0.45);
-        }
+    .hud .pill {
+      padding: 8px 12px; border-radius: 999px; background: rgba(255,255,255,.08);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+    }
 
-        #road::before,
-        #road::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            width: 6px;
-            height: 100%;
-            background: repeating-linear-gradient(
-                to bottom,
-                var(--lane-mark) 0 22px,
-                transparent 22px 48px
-            );
-            opacity: 0.7;
-            filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.2));
-        }
+    .canvas-wrap {
+      position: relative; border-radius: 20px; overflow: hidden;
+      background: #0b1720;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+      width: 100%;
+      /* Assure une hauteur calculable pour le canvas */
+      aspect-ratio: 400 / 640;
+      min-height: 360px;
+    }
 
-        #road::before {
-            left: calc(33.33% - 3px);
-        }
+    canvas { width: 100%; height: 100%; display: block; }
 
-        #road::after {
-            right: calc(33.33% - 3px);
-        }
+    .overlay {
+      position: absolute; inset: 0;
+      display: grid; place-items: center; text-align: center;
+      padding: 20px; background: rgba(11,23,32,0.6);
+      opacity: 0; pointer-events: none; transition: opacity 180ms ease;
+    }
 
-        #car {
-            position: absolute;
-            bottom: 28px;
-            left: 50%;
-            width: 62px;
-            height: 118px;
-            transform: translateX(-50%);
-        }
+    .overlay.show { opacity: 1; pointer-events: auto; }
 
-        #car .car-shadow {
-            position: absolute;
-            left: 50%;
-            bottom: -18px;
-            width: 96px;
-            height: 42px;
-            transform: translateX(-50%);
-            background: radial-gradient(circle at center, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.0) 70%);
-            filter: blur(4px);
-            pointer-events: none;
-        }
+    .overlay .box {
+      background: rgba(13, 24, 33, 0.85);
+      border-radius: 20px; padding: clamp(18px, 4vw, 28px);
+      box-shadow: 0 18px 36px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.05);
+      max-width: 90%;
+    }
 
-        #car .car-body {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(150deg, var(--doblo-white) 0%, #edf1f4 35%, var(--doblo-darker) 100%);
-            border-radius: 20px 20px 16px 16px;
-            border: 3px solid var(--doblo-gray);
-            box-shadow:
-                0 18px 28px rgba(0, 0, 0, 0.36),
-                inset 0 -5px 10px rgba(0, 0, 0, 0.22),
-                inset 0 4px 8px rgba(255, 255, 255, 0.45);
-            transform-origin: center bottom;
-            transform: perspective(540px) rotateX(16deg);
-            overflow: hidden;
-        }
+    .overlay h2 {
+      margin: 0 0 8px; font-size: clamp(22px, 6vw, 36px);
+      letter-spacing: 1px;
+    }
+    .overlay p { margin: 0 0 16px; opacity: .85; }
 
-        #car .car-body::before {
-            content: "";
-            position: absolute;
-            top: 8px;
-            left: 8px;
-            right: 8px;
-            height: 28px;
-            border-radius: 16px;
-            background: repeating-linear-gradient(135deg, var(--doblo-red) 0 12px, #f8f8f8 12px 24px);
-            box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.2);
-        }
+    .row {
+      display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+    }
 
-        #car .car-body::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(110deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.28) 100%);
-            mix-blend-mode: multiply;
-            pointer-events: none;
-        }
+    button.btn {
+      appearance: none; border: 0; cursor: pointer; color: var(--button-text);
+      background: var(--button-doblo); font-weight: 800; letter-spacing: .6px;
+      padding: 12px 16px; border-radius: 14px; box-shadow: 0 12px 26px rgba(0,0,0,.35);
+      transition: transform 140ms ease, box-shadow 140ms ease; font-size: 15px;
+    }
+    button.btn:hover { transform: translateY(-1px); box-shadow: 0 16px 32px rgba(0,0,0,.4); }
+    button.btn:active { transform: translateY(1px); }
 
-        #car .roof {
-            position: absolute;
-            top: 40px;
-            left: 14px;
-            right: 14px;
-            height: 46px;
-            border-radius: 14px;
-            background: linear-gradient(155deg, #fbfbfb 0%, #e6ebef 45%, #cfd5db 100%);
-            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.18);
-        }
+    .controls {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;
+    }
+    .controls .cbtn {
+      border: 0; border-radius: 14px; padding: 12px 10px; font-weight: 800;
+      background: rgba(255,255,255,.08); color: var(--text-main); letter-spacing: .6px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+      touch-action: manipulation;
+    }
 
-        #car .window {
-            position: absolute;
-            top: 58px;
-            left: 10px;
-            right: 10px;
-            height: 34px;
-            border-radius: 12px;
-            background: linear-gradient(160deg, rgba(56, 115, 160, 0.85) 0%, rgba(13, 31, 52, 0.92) 80%);
-            box-shadow: inset 0 6px 10px rgba(255, 255, 255, 0.2);
-        }
-
-        #car .window::before {
-            content: "";
-            position: absolute;
-            inset: 6px 14px;
-            border-radius: 10px;
-            background: linear-gradient(156deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0) 60%);
-        }
-
-        #car .badge {
-            position: absolute;
-            bottom: 18px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 11px;
-            letter-spacing: 2px;
-            font-weight: 700;
-            color: var(--doblo-red);
-            text-transform: uppercase;
-            text-shadow: 0 0 6px rgba(215, 38, 56, 0.45);
-        }
-
-        #car .beacon {
-            position: absolute;
-            top: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 22px;
-            height: 12px;
-            background: radial-gradient(circle at center, var(--doblo-blue) 0%, #0d4f8f 100%);
-            border-radius: 10px 10px 6px 6px;
-            box-shadow: 0 0 10px rgba(34, 128, 195, 0.8);
-        }
-
-        #car .light {
-            position: absolute;
-            top: 6px;
-            width: 14px;
-            height: 22px;
-            border-radius: 12px;
-            background: linear-gradient(150deg, #fff9a6 0%, #ffd75b 60%, #fbb531 100%);
-            box-shadow: 0 0 6px rgba(255, 210, 90, 0.68);
-        }
-
-        #car .light.left {
-            left: 6px;
-            transform: rotate(6deg);
-        }
-
-        #car .light.right {
-            right: 6px;
-            transform: rotate(-6deg);
-        }
-
-        #car .signal {
-            position: absolute;
-            top: 74px;
-            width: 20px;
-            height: 30px;
-            border-radius: 8px;
-            background: linear-gradient(155deg, #c6d6e3 0%, #8db3d3 55%, #4c7ca9 100%);
-            box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.18);
-        }
-
-        #car .signal.left {
-            left: 9px;
-        }
-
-        #car .signal.right {
-            right: 9px;
-        }
-
-        .obstacle {
-            position: absolute;
-            top: -150px;
-            width: 58px;
-            height: 128px;
-            background: linear-gradient(160deg, #3a3a3a 0%, #222 48%, #0f0f0f 100%);
-            border-radius: 18px;
-            border: 3px solid #151515;
-            box-shadow: 0 20px 32px rgba(0, 0, 0, 0.48);
-            transform-origin: center bottom;
-            transform: perspective(520px) rotateX(18deg);
-        }
-
-        .obstacle::before {
-            content: "";
-            position: absolute;
-            top: 14px;
-            left: 10px;
-            right: 10px;
-            height: 20px;
-            border-radius: 12px;
-            background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0 12px, rgba(255, 0, 0, 0.85) 12px 24px);
-            box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
-        }
-
-        .obstacle::after {
-            content: "STOP";
-            position: absolute;
-            bottom: 18px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 4px 12px;
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.12);
-            color: rgba(255, 255, 255, 0.68);
-            font-size: 11px;
-            letter-spacing: 2px;
-        }
-
-        #overlay {
-            position: absolute;
-            inset: 0;
-            display: grid;
-            place-items: center;
-            background: rgba(7, 7, 12, 0.65);
-            color: #f7f7f7;
-            text-align: center;
-            transition: opacity 180ms ease;
-        }
-
-        #overlay.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .overlay-card {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            padding: 26px 28px;
-            border-radius: 18px;
-            background: rgba(0, 0, 0, 0.55);
-            backdrop-filter: blur(4px);
-            max-width: 82%;
-        }
-
-        #overlay-message {
-            margin: 0;
-            font-size: 32px;
-            letter-spacing: 2px;
-            font-weight: 700;
-        }
-
-        #overlay-subtext {
-            margin: 0;
-            font-size: 15px;
-            line-height: 1.5;
-            color: rgba(255, 255, 255, 0.78);
-        }
-
-        #start-button {
-            padding: 10px 18px;
-            border-radius: 14px;
-            border: none;
-            font-size: 15px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            color: #11151c;
-            background: linear-gradient(130deg, #ffef85 0%, #ffbf3c 100%);
-            cursor: pointer;
-            transition: transform 120ms ease;
-        }
-
-        #start-button:active {
-            transform: scale(0.96);
-        }
-
-        #controls {
-            width: 100%;
-            display: flex;
-            gap: clamp(12px, 4vw, 18px);
-            flex-wrap: wrap;
-            align-items: stretch;
-        }
-
-        #steering-module {
-            flex: 1 1 52%;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            align-items: center;
-        }
-
-        #palette-track {
-            position: relative;
-            width: 100%;
-            height: 92px;
-            border-radius: 52px;
-            background: linear-gradient(160deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 100%);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: inset 0 10px 18px rgba(0, 0, 0, 0.35);
-        }
-
-        #palette-track::before {
-            content: "";
-            position: absolute;
-            top: 50%;
-            left: 14px;
-            right: 14px;
-            height: 2px;
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-50%);
-        }
-
-        #palette-handle {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 66px;
-            height: 66px;
-            border-radius: 50%;
-            background: linear-gradient(145deg, #ffffff 0%, #d1d6dc 58%, #aeb5bd 100%);
-            border: 2px solid rgba(255, 255, 255, 0.65);
-            box-shadow: 0 14px 26px rgba(0, 0, 0, 0.35);
-            transform: translate(-50%, -50%);
-            transition: left 220ms ease;
-        }
-
-        #palette-track.active #palette-handle {
-            transition: none;
-        }
-
-        .control-label {
-            font-size: 14px;
-            letter-spacing: 0.6px;
-            color: rgba(255, 255, 255, 0.68);
-            text-transform: uppercase;
-        }
-
-        #pedals {
-            flex: 1 1 42%;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        #pedals button {
-            flex: 1 1 0;
-            min-height: 64px;
-            border-radius: 18px;
-            border: none;
-            color: #f6f8fb;
-            font-size: 17px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            cursor: pointer;
-            box-shadow: 0 16px 24px rgba(0, 0, 0, 0.35);
-        }
-
-        #accelerate-button {
-            background: var(--pedal-accel);
-        }
-
-        #brake-button {
-            background: var(--pedal-brake);
-        }
-
-        #pedals button.pressed {
-            transform: translateY(2px) scale(0.99);
-            box-shadow: 0 12px 16px rgba(0, 0, 0, 0.4);
-        }
-
-        .crash-banner {
-            position: absolute;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.75);
-            padding: 12px 24px;
-            border-radius: 18px;
-            background: rgba(255, 255, 255, 0.9);
-            color: #c00f2b;
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            box-shadow: 0 18px 32px rgba(0, 0, 0, 0.4);
-            animation: crash-pop 640ms ease-out forwards;
-        }
-
-        @keyframes crash-pop {
-            0% {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(0.55);
-            }
-            45% {
-                opacity: 1;
-                transform: translate(-50%, -52%) scale(1.05);
-            }
-            100% {
-                opacity: 0;
-                transform: translate(-50%, -46%) scale(0.9);
-            }
-        }
-
-        @media (max-width: 540px) {
-            #road {
-                min-height: 420px;
-            }
-
-            #controls {
-                flex-direction: column;
-            }
-
-            #pedals {
-                flex-direction: row;
-            }
-
-            #pedals button {
-                min-height: 58px;
-            }
-        }
-
-        @media (max-width: 380px) {
-            #palette-handle {
-                width: 60px;
-                height: 60px;
-            }
-        }
-    </style>
+    footer { text-align: center; opacity: .6; font-size: 13px; }
+  </style>
 </head>
 <body>
-    <div id="game-wrapper">
-        <div id="hud">
-            <div>Score: <span id="score-value">0.0</span></div>
-            <div>Record: <span id="best-value">0.0</span></div>
-        </div>
-        <div id="road">
-            <div id="car">
-                <div class="car-shadow"></div>
-                <div class="car-body">
-                    <div class="roof"></div>
-                    <div class="window"></div>
-                    <div class="beacon"></div>
-                    <div class="light left"></div>
-                    <div class="light right"></div>
-                    <div class="signal left"></div>
-                    <div class="signal right"></div>
-                    <div class="badge">DOBLO</div>
-                </div>
-            </div>
-            <div id="overlay" class="">
-                <div class="overlay-card">
-                    <p id="overlay-message"></p>
-                    <p id="overlay-subtext"></p>
-                    <button type="button" id="start-button">Démarrer</button>
-                </div>
-            </div>
-        </div>
-        <div id="controls">
-            <div id="steering-module">
-                <div id="palette-track" class="released">
-                    <div id="palette-handle"></div>
-                </div>
-                <span class="control-label">Palette de direction</span>
-            </div>
-            <div id="pedals">
-                <button type="button" id="brake-button">Freiner</button>
-                <button type="button" id="accelerate-button">Accélérer</button>
-            </div>
-        </div>
+  <main class="card">
+    <header>
+      <h1>Doblo Crash</h1>
+      <p>Évitez les véhicules. Plus simple, plus fluide… et « Félicitations » à chaque crash !</p>
+    </header>
+
+    <div class="hud">
+      <div class="pill">Score : <span id="score">0</span></div>
+      <div class="pill">Meilleur : <span id="best">0</span></div>
+      <div class="pill"><button id="pauseBtn" class="cbtn" style="padding:6px 10px">⏸︎ Pause</button></div>
     </div>
 
-    <script>
-        (function () {
-            const road = document.getElementById("road");
-            const car = document.getElementById("car");
-            const overlay = document.getElementById("overlay");
-            const overlayMessage = document.getElementById("overlay-message");
-            const overlaySubtext = document.getElementById("overlay-subtext");
-            const startButton = document.getElementById("start-button");
-            const scoreValue = document.getElementById("score-value");
-            const bestValue = document.getElementById("best-value");
-            const paletteTrack = document.getElementById("palette-track");
-            const paletteHandle = document.getElementById("palette-handle");
-            const accelerateButton = document.getElementById("accelerate-button");
-            const brakeButton = document.getElementById("brake-button");
+    <div class="canvas-wrap">
+      <canvas id="game" width="400" height="640" aria-label="aire de jeu"></canvas>
 
-            let animationId = 0;
-            let lastFrame = performance.now();
-            let spawnTimer = 0;
-            let score = 0;
-            let bestScore = Number(window.localStorage.getItem("dobloBestScore") || 0);
-            let gameRunning = false;
-            let moveVelocity = 0;
-            const moveAcceleration = 1400;
-            const maxMoveSpeed = 360;
-            const carState = { x: 0 };
-            const obstacles = [];
+      <div id="overlay" class="overlay" aria-live="polite">
+        <div class="box">
+          <h2>Félicitations ! 🎉</h2>
+          <p>Tu as donné tout ce que tu pouvais. Repars plus fort !</p>
+          <div class="row">
+            <button class="btn" id="retryBtn">Rejouer</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
-            let pointerSteerActive = false;
-            let pointerSteer = 0;
-            let keyLeftActive = false;
-            let keyRightActive = false;
-            let keySteer = 0;
+    <div class="controls" aria-hidden="false">
+      <button class="cbtn" id="leftBtn">← Gauche</button>
+      <button class="cbtn" id="rightBtn">Droite →</button>
+    </div>
 
-            let pointerThrottle = 0;
-            let keyThrottle = 0;
-            let keyThrottleUp = false;
-            let keyThrottleDown = false;
+    <footer>
+      Astuce : ← → pour changer de voie, ↑ pour accélérer, ↓ pour freiner. Sur mobile : utilisez les boutons.
+    </footer>
+  </main>
 
-            let currentSpeed = 200;
+  <script>
+    (function(){
+      const canvas = document.getElementById('game');
+      const ctx = canvas.getContext('2d');
+      const DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
 
-            function setCarPosition(x) {
-                const half = car.offsetWidth / 2;
-                const min = half + 8;
-                const max = road.clientWidth - half - 8;
-                carState.x = Math.min(Math.max(x, min), max);
-                car.style.left = carState.x + "px";
-            }
+      // Responsive pixel ratio
+      function fitCanvas(){
+        // Calcul basé sur la taille RENDUE (CSS) du canvas
+        let rect = canvas.getBoundingClientRect();
+        // Si la hauteur est nulle (ex. styles pas encore appliqués), on se base sur le parent
+        if (rect.height < 2) {
+          const pr = canvas.parentNode.getBoundingClientRect();
+          if (pr.width > 0 && pr.height > 0) rect = pr;
+        }
+        const w = Math.max(1, Math.round(rect.width * DPR));
+        const h = Math.max(1, Math.round(rect.height * DPR));
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
+        }
+        // Espace de dessin en unités CSS pixels
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      }
+      new ResizeObserver(fitCanvas).observe(canvas);
+      window.addEventListener('resize', fitCanvas);
+      window.addEventListener('load', fitCanvas);
+      // Fallback initial (au cas où la taille serait 0 au tout premier calcul)
+      setTimeout(fitCanvas, 0);
 
-            function resetCarPosition() {
-                setCarPosition(road.clientWidth / 2);
-                car.style.bottom = "28px";
-            }
+      // Game settings (rendus plus faciles)
+      const LANES = 3;
+      let laneW, leftEdge, roadW, roadTop = 0, roadBottom;
 
-            function updateScore(value) {
-                score = value;
-                scoreValue.textContent = score.toFixed(1);
-            }
+      const settings = {
+        playerSpeed: 5,              // vitesse latérale
+        baseEnemySpeed: 2.2,         // ↓ plus lent
+        maxEnemyOnScreen: 2,         // ↓ nombre limité de véhicules simultanés
+        spawnEveryMs: 1500,          // ↓ rythme d'apparition plus rare
+        accelFactor: 0.00008,        // progression très douce
+        enemySpeedCap: 5.2,
+        laneChangeCooldownMs: 120,
+      };
 
-            function updateHandlePosition(steer) {
-                const ratio = (steer + 1) / 2;
-                paletteHandle.style.left = (ratio * 100).toFixed(2) + "%";
-            }
+      const state = {
+        running: true,
+        gameOver: false,
+        time: 0,
+        lastSpawn: 0,
+        enemySpeed: settings.baseEnemySpeed,
+        lane: 1,
+        score: 0,
+        best: parseInt(localStorage.getItem('doblo-crash-best') || '0', 10),
+      };
 
-            function createObstacle() {
-                const obstacle = document.createElement("div");
-                obstacle.className = "obstacle";
-                const padding = 18;
-                const roadWidth = road.clientWidth;
-                obstacle.style.top = "-150px";
-                road.appendChild(obstacle);
-                const obstacleWidth = obstacle.offsetWidth || 58;
-                const available = roadWidth - padding * 2 - obstacleWidth;
-                const posX = padding + Math.random() * Math.max(available, 0);
-                obstacle.style.left = posX + "px";
-                obstacles.push({ element: obstacle, y: -150 });
-            }
+      const ui = {
+        score: document.getElementById('score'),
+        best: document.getElementById('best'),
+        overlay: document.getElementById('overlay'),
+        retry: document.getElementById('retryBtn'),
+        pause: document.getElementById('pauseBtn'),
+        left: document.getElementById('leftBtn'),
+        right: document.getElementById('rightBtn'),
+      };
+      ui.best.textContent = state.best;
 
-            function clearCrashBanners() {
-                road.querySelectorAll('.crash-banner').forEach((banner) => banner.remove());
-            }
+      const player = { w: 46, h: 80, x: 0, y: 0, lane: 1, targetLane: 1, vy: 0, speedY: 0 };
+      const enemies = [];
 
-            function spawnCrashBanner() {
-                const banner = document.createElement('div');
-                banner.className = 'crash-banner';
-                banner.textContent = 'Félicitations';
-                const carTop = car.offsetTop;
-                banner.style.top = (carTop + car.offsetHeight / 2) + 'px';
-                road.appendChild(banner);
-                setTimeout(() => banner.remove(), 900);
-            }
+      function layout(){
+        const W = canvas.width / DPR, H = canvas.height / DPR;
+        roadW = Math.min(340, Math.max(260, W * 0.78));
+        laneW = roadW / LANES;
+        leftEdge = (W - roadW) / 2;
+        roadBottom = H;
 
-            function resetGame() {
-                cancelAnimationFrame(animationId);
-                while (obstacles.length) {
-                    obstacles.pop().element.remove();
-                }
-                clearCrashBanners();
-                updateScore(0);
-                spawnTimer = 0;
-                moveVelocity = 0;
-                pointerSteerActive = false;
-                pointerSteer = 0;
-                keyLeftActive = false;
-                keyRightActive = false;
-                keySteer = 0;
-                pointerThrottle = 0;
-                keyThrottle = 0;
-                keyThrottleUp = false;
-                keyThrottleDown = false;
-                currentSpeed = 200;
-                accelerateButton.classList.remove('pressed');
-                brakeButton.classList.remove('pressed');
-                paletteHandle.style.transition = 'left 220ms ease';
-                updateHandlePosition(0);
-                lastFrame = performance.now();
-                resetCarPosition();
-            }
+        player.y = H - 110;
+        player.w = laneW * 0.68;
+        player.h = Math.max(70, laneW * 1.1);
+        movePlayerToLane(state.lane, true);
+      }
 
-            function startGame() {
-                resetGame();
-                overlay.classList.add("hidden");
-                overlayMessage.textContent = "";
-                overlaySubtext.textContent = "";
-                gameRunning = true;
-                animationId = requestAnimationFrame(loop);
-            }
+      function movePlayerToLane(lane, instant){
+        state.lane = Math.max(0, Math.min(LANES-1, lane));
+        const xCenter = leftEdge + laneW * (state.lane + 0.5);
+        player.x = xCenter - player.w/2;
+        if(instant) return;
+      }
 
-            function endGame() {
-                gameRunning = false;
-                spawnCrashBanner();
-                overlayMessage.textContent = "Félicitations";
-                overlaySubtext.textContent = "Touchez, cliquez ou appuyez sur Entrée pour relancer.";
-                overlay.classList.remove("hidden");
-                if (score > bestScore) {
-                    bestScore = score;
-                    window.localStorage.setItem("dobloBestScore", bestScore.toFixed(1));
-                }
-                bestValue.textContent = bestScore.toFixed(1);
-            }
+      // Input
+      let canLaneChange = true;
+      function laneCooldown(){
+        canLaneChange = false;
+        setTimeout(()=>canLaneChange = true, settings.laneChangeCooldownMs);
+      }
 
-            function loop(timestamp) {
-                const delta = Math.min((timestamp - lastFrame) / 1000, 0.035);
-                lastFrame = timestamp;
+      window.addEventListener('keydown', (e)=>{
+        if(state.gameOver){ if(e.key === ' '){ restart(); } return; }
+        if(e.key === 'ArrowLeft' && canLaneChange){ movePlayerToLane(state.lane-1); laneCooldown(); }
+        if(e.key === 'ArrowRight' && canLaneChange){ movePlayerToLane(state.lane+1); laneCooldown(); }
+        if(e.key === 'ArrowUp'){ state.enemySpeed *= 1.005; }
+        if(e.key === 'ArrowDown'){ state.enemySpeed *= 0.99; }
+        if(e.key.toLowerCase() === 'p'){ togglePause(); }
+      });
 
-                if (!gameRunning) {
-                    return;
-                }
+      ui.left.addEventListener('click', ()=>{ if(!state.gameOver && canLaneChange){ movePlayerToLane(state.lane-1); laneCooldown(); }});
+      ui.right.addEventListener('click', ()=>{ if(!state.gameOver && canLaneChange){ movePlayerToLane(state.lane+1); laneCooldown(); }});
 
-                const steeringInput = pointerSteerActive ? pointerSteer : keySteer;
-                moveVelocity += steeringInput * moveAcceleration * delta;
-                moveVelocity *= 0.86;
-                if (Math.abs(moveVelocity) < 14 && Math.abs(steeringInput) < 0.1) {
-                    moveVelocity = 0;
-                }
-                moveVelocity = Math.min(Math.max(moveVelocity, -maxMoveSpeed), maxMoveSpeed);
-                const nextX = carState.x + moveVelocity * delta;
-                setCarPosition(nextX);
+      ui.retry.addEventListener('click', restart);
+      ui.pause.addEventListener('click', togglePause);
 
-                const baseSpeed = 180 + Math.min(150, score * 2.4);
-                const throttleInput = pointerThrottle !== 0 ? pointerThrottle : keyThrottle;
-                const targetSpeed = Math.min(380, Math.max(140, baseSpeed + throttleInput * 120));
-                currentSpeed += (targetSpeed - currentSpeed) * Math.min(1, delta * 4.2);
-                const effectiveSpeed = currentSpeed;
+      window.addEventListener('blur', ()=>{ if(state.running){ togglePause(true); } });
 
-                const carRect = car.getBoundingClientRect();
-                spawnTimer += delta;
-                const spawnRate = Math.max(0.42, 1.6 - score * 0.016 - (effectiveSpeed - 180) / 420);
-                if (spawnTimer >= spawnRate) {
-                    spawnTimer = 0;
-                    createObstacle();
-                }
+      function togglePause(forceOn){
+        if(forceOn === true){ state.running = false; ui.pause.textContent = '▶︎ Reprendre'; return; }
+        state.running = !state.running;
+        ui.pause.textContent = state.running ? '⏸︎ Pause' : '▶︎ Reprendre';
+        if(state.running) lastFrame = performance.now();
+      }
 
-                for (let i = obstacles.length - 1; i >= 0; i -= 1) {
-                    const entry = obstacles[i];
-                    entry.y += effectiveSpeed * delta;
-                    entry.element.style.top = entry.y + "px";
+      function restart(){
+        state.gameOver = false;
+        ui.overlay.classList.remove('show');
+        enemies.length = 0;
+        state.time = 0;
+        state.lastSpawn = 0;
+        state.enemySpeed = settings.baseEnemySpeed;
+        state.score = 0;
+        state.lane = 1;
+        movePlayerToLane(1, true);
+        state.running = true;
+        lastFrame = performance.now();
+      }
 
-                    if (entry.y > road.clientHeight + 160) {
-                        entry.element.remove();
-                        obstacles.splice(i, 1);
-                        continue;
-                    }
+      // Spawning ennemis (plus facile)
+      function trySpawn(dt){
+        if(enemies.length >= settings.maxEnemyOnScreen) return; // limite stricte
+        state.lastSpawn += dt;
+        if(state.lastSpawn >= settings.spawnEveryMs){
+          state.lastSpawn = 0;
+          const lane = pickFreeLaneAtSpawn();
+          const e = createEnemy(lane);
+          enemies.push(e);
+        }
+      }
 
-                    const rect = entry.element.getBoundingClientRect();
-                    if (!(carRect.right < rect.left + 8 ||
-                        carRect.left > rect.right - 8 ||
-                        carRect.bottom < rect.top + 12 ||
-                        carRect.top > rect.bottom - 12)) {
-                        endGame();
-                        return;
-                    }
-                }
+      function pickFreeLaneAtSpawn(){
+        const occupied = new Set();
+        for(const e of enemies){ if(e.y < 120){ occupied.add(e.lane); }
+        }
+        const options = [0,1,2].filter(l=>!occupied.has(l));
+        return options.length ? options[Math.floor(Math.random()*options.length)] : Math.floor(Math.random()*LANES);
+      }
 
-                updateScore(score + delta * (effectiveSpeed / 18));
-                animationId = requestAnimationFrame(loop);
-            }
+      function createEnemy(lane){
+        const W = canvas.width / DPR, H = canvas.height / DPR;
+        const w = laneW * 0.66;
+        const h = Math.max(62, laneW * 1.0);
+        const xCenter = leftEdge + laneW * (lane + 0.5);
+        return { lane, x: xCenter - w/2, y: -h - 20, w, h, speed: state.enemySpeed * (0.92 + Math.random()*0.2) };
+      }
 
-            function updateKeySteer() {
-                if (keyLeftActive && !keyRightActive) {
-                    keySteer = -1;
-                    return;
-                }
-                if (keyRightActive && !keyLeftActive) {
-                    keySteer = 1;
-                    return;
-                }
-                keySteer = 0;
-            }
+      function update(dt){
+        // Progression douce
+        state.enemySpeed = Math.min(settings.enemySpeedCap, state.enemySpeed + settings.accelFactor * dt);
+        state.score += dt * 0.01; // 1 point / 100ms
+        ui.score.textContent = Math.floor(state.score).toString();
 
-            function updateKeyThrottle() {
-                if (keyThrottleUp && !keyThrottleDown) {
-                    keyThrottle = 1;
-                    return;
-                }
-                if (keyThrottleDown && !keyThrottleUp) {
-                    keyThrottle = -1;
-                    return;
-                }
-                keyThrottle = 0;
-            }
+        // MàJ des ennemis
+        for(let i=enemies.length-1;i>=0;i--){
+          const e = enemies[i];
+          e.y += e.speed * (dt/16.6667);
+          if(e.y > roadBottom + 40){ enemies.splice(i,1); }
+        }
 
-            function handleKeyDown(event) {
-                if (!gameRunning && (event.code === "Enter" || event.code === "Space")) {
-                    startGame();
-                    return;
-                }
+        // Collisions
+        for(const e of enemies){
+          if(rectsOverlap(player, e)){ return gameOver(); }
+        }
+      }
 
-                if (event.code === "ArrowLeft" || event.code === "KeyA") {
-                    keyLeftActive = true;
-                    updateKeySteer();
-                }
+      function rectsOverlap(a,b){
+        return !(a.x + a.w < b.x + 8 || a.x > b.x + b.w - 8 || a.y + a.h < b.y + 8 || a.y > b.y + b.h - 8);
+      }
 
-                if (event.code === "ArrowRight" || event.code === "KeyD") {
-                    keyRightActive = true;
-                    updateKeySteer();
-                }
+      function draw(){
+        const W = canvas.width / DPR, H = canvas.height / DPR;
+        ctx.clearRect(0,0,W,H);
 
-                if (event.code === "ArrowUp" || event.code === "KeyW") {
-                    keyThrottleUp = true;
-                    updateKeyThrottle();
-                }
+        // route
+        drawRoad(ctx, W, H);
 
-                if (event.code === "ArrowDown" || event.code === "KeyS") {
-                    keyThrottleDown = true;
-                    updateKeyThrottle();
-                }
-            }
+        // ennemis
+        for(const e of enemies){ drawCar(ctx, e.x, e.y, e.w, e.h, '#cbd5e1'); }
 
-            function handleKeyUp(event) {
-                if ((event.code === "ArrowLeft" || event.code === "KeyA")) {
-                    keyLeftActive = false;
-                    updateKeySteer();
-                }
-                if ((event.code === "ArrowRight" || event.code === "KeyD")) {
-                    keyRightActive = false;
-                    updateKeySteer();
-                }
-                if (event.code === "ArrowUp" || event.code === "KeyW") {
-                    keyThrottleUp = false;
-                    updateKeyThrottle();
-                }
-                if (event.code === "ArrowDown" || event.code === "KeyS") {
-                    keyThrottleDown = false;
-                    updateKeyThrottle();
-                }
-            }
+        // joueur
+        drawCar(ctx, player.x, player.y, player.w, player.h, '#ff4858');
+      }
 
-            function bindPaletteControls() {
-                const moveHandle = (event) => {
-                    const rect = paletteTrack.getBoundingClientRect();
-                    const ratio = (event.clientX - rect.left) / rect.width;
-                    const steer = Math.min(1, Math.max(-1, ratio * 2 - 1));
-                    pointerSteer = steer;
-                    updateHandlePosition(steer);
-                };
+      function drawRoad(ctx, W, H){
+        // fond route
+        ctx.fillStyle = '#0f222f';
+        ctx.fillRect(leftEdge, roadTop, roadW, H);
 
-                const releaseHandle = (event) => {
-                    if (event && event.pointerId !== undefined && paletteTrack.hasPointerCapture(event.pointerId)) {
-                        paletteTrack.releasePointerCapture(event.pointerId);
-                    }
-                    if (!pointerSteerActive) {
-                        return;
-                    }
-                    pointerSteerActive = false;
-                    pointerSteer = 0;
-                    paletteTrack.classList.remove('active');
-                    paletteHandle.style.transition = 'left 220ms ease';
-                    updateHandlePosition(0);
-                };
+        // bords
+        ctx.fillStyle = 'rgba(255,255,255,.2)';
+        ctx.fillRect(leftEdge, 0, 4, H);
+        ctx.fillRect(leftEdge + roadW - 4, 0, 4, H);
 
-                paletteTrack.addEventListener('pointerdown', (event) => {
-                    pointerSteerActive = true;
-                    if (event.pointerId !== undefined) {
-                        paletteTrack.setPointerCapture(event.pointerId);
-                    }
-                    paletteTrack.classList.add('active');
-                    paletteHandle.style.transition = 'none';
-                    moveHandle(event);
-                });
+        // pointillés de voies
+        ctx.strokeStyle = 'rgba(255,255,255,.22)';
+        ctx.lineWidth = 4; ctx.setLineDash([18, 18]);
+        for(let i=1;i<LANES;i++){
+          const x = leftEdge + laneW * i;
+          ctx.beginPath();
+          ctx.moveTo(x, 0); ctx.lineTo(x, H);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+      }
 
-                paletteTrack.addEventListener('pointermove', (event) => {
-                    if (!pointerSteerActive) {
-                        return;
-                    }
-                    moveHandle(event);
-                });
+      function drawCar(ctx, x,y,w,h, color){
+        // corps
+        const r = 10;
+        ctx.fillStyle = color;
+        roundRect(ctx, x, y, w, h, r, true, false);
+        // vitres
+        ctx.fillStyle = 'rgba(0,0,0,.22)';
+        roundRect(ctx, x + w*0.18, y + h*0.12, w*0.64, h*0.25, 8, true, false);
+        // ombre
+        ctx.fillStyle = 'rgba(0,0,0,.22)';
+        ctx.fillRect(x+4, y+h-6, w-8, 4);
+      }
 
-                paletteTrack.addEventListener('pointerup', releaseHandle);
-                paletteTrack.addEventListener('pointercancel', releaseHandle);
-                paletteTrack.addEventListener('pointerleave', (event) => {
-                    if (pointerSteerActive) {
-                        releaseHandle(event);
-                    }
-                });
-            }
+      function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+        if (typeof radius === 'number') {
+          radius = {tl: radius, tr: radius, br: radius, bl: radius};
+        } else {
+          radius = {...{tl:0, tr:0, br:0, bl:0}, ...radius};
+        }
+        ctx.beginPath();
+        ctx.moveTo(x + radius.tl, y);
+        ctx.lineTo(x + width - radius.tr, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius.tr);
+        ctx.lineTo(x + width, y + height - radius.br);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius.br, y + height);
+        ctx.lineTo(x + radius.bl, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius.bl);
+        ctx.lineTo(x, y + radius.tl);
+        ctx.quadraticCurveTo(x, y, x + radius.tl, y);
+        ctx.closePath();
+        if (fill) ctx.fill();
+        if (stroke) ctx.stroke();
+      }
 
-            function bindPedal(button, value) {
-                const press = (event) => {
-                    event.preventDefault();
-                    if (event.pointerId !== undefined) {
-                        button.setPointerCapture(event.pointerId);
-                    }
-                    pointerThrottle = value;
-                    button.classList.add('pressed');
-                };
+      function gameOver(){
+        state.gameOver = true;
+        state.running = false;
+        ui.overlay.classList.add('show'); // « Félicitations ! » visible
+        const intScore = Math.floor(state.score);
+        if(intScore > state.best){
+          state.best = intScore;
+          localStorage.setItem('doblo-crash-best', String(intScore));
+          ui.best.textContent = intScore;
+        }
+      }
 
-                const release = (event) => {
-                    if (event && event.pointerId !== undefined && button.hasPointerCapture(event.pointerId)) {
-                        button.releasePointerCapture(event.pointerId);
-                    }
-                    if (pointerThrottle === value) {
-                        pointerThrottle = 0;
-                    }
-                    button.classList.remove('pressed');
-                };
+      // Boucle
+      let lastFrame = performance.now();
+      function frame(now){
+        const dt = Math.min(48, now - lastFrame); // clamp
+        lastFrame = now;
 
-                button.addEventListener('pointerdown', press);
-                button.addEventListener('pointerup', release);
-                button.addEventListener('pointercancel', release);
-                button.addEventListener('pointerleave', () => {
-                    if (pointerThrottle === value) {
-                        pointerThrottle = 0;
-                        button.classList.remove('pressed');
-                    }
-                });
-            }
+        layout();
 
-            document.addEventListener("keydown", handleKeyDown);
-            document.addEventListener("keyup", handleKeyUp);
+        if(state.running && !state.gameOver){
+          state.time += dt;
+          trySpawn(dt);
+          update(dt);
+        }
+        draw();
 
-            document.addEventListener("touchstart", () => {
-                if (!gameRunning) {
-                    startGame();
-                }
-            }, { passive: true });
+        requestAnimationFrame(frame);
+      }
 
-            overlay.addEventListener("click", () => {
-                if (!gameRunning) {
-                    startGame();
-                }
-            });
+      // init
+      requestAnimationFrame(frame);
 
-            startButton.addEventListener("click", () => {
-                if (!gameRunning) {
-                    startGame();
-                }
-            });
-
-            bindPaletteControls();
-            bindPedal(accelerateButton, 1);
-            bindPedal(brakeButton, -1);
-
-            window.addEventListener("resize", () => {
-                resetCarPosition();
-                updateHandlePosition(pointerSteerActive ? pointerSteer : 0);
-            });
-
-            overlayMessage.textContent = "Prêt ?";
-            overlaySubtext.textContent = "Palette tactile ou flèches pour diriger. Pédales pour accélérer ou freiner.";
-            bestValue.textContent = bestScore.toFixed(1);
-            updateHandlePosition(0);
-            resetCarPosition();
-        })();
-    </script>
+    })();
+  </script>
 </body>
 </html>
